@@ -24,6 +24,10 @@ RUN composer install
 
 COPY . .
 
+# Install Symfony
+RUN curl -sS https://get.symfony.com/cli/installer | bash
+RUN mv /root/.symfony5/bin/symfony /usr/local/bin/symfony
+
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html
 
