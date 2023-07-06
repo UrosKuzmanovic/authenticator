@@ -23,9 +23,9 @@ class UserManager
      * @param User $user
      * @return User
      */
-    public function add(User $user): User
+    public function save(User $user): User
     {
-        return $this->repository->add($user);
+        return $this->repository->save($user);
     }
 
     /**

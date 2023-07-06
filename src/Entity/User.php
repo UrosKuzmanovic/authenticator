@@ -20,30 +20,79 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      * @ORM\Column(type="integer")
      * @Groups({"view"})
      */
-    private $id;
+    private ?int $id;
 
     /**
      * @ORM\Column(type="string", length=180, unique=true)
      * @Groups({"view"})
      */
-    private $email;
+    private ?string $email = null;
 
     /**
      * @ORM\Column(type="json")
      * @Groups({"view"})
      */
-    private $roles = [];
+    private array $roles = [];
 
     /**
      * @var string The hashed password
-     * @ORM\Column(type="string")
+     * @ORM\Column(type="string", nullable=true)
      * @Groups({"serialization"})
      */
-    private $password;
+    private ?string $password = null;
+
+    /**
+     * @ORM\Column(type="string", length=255, nullable=true)
+     * @Groups({"view"})
+     */
+    private ?string $firstName = null;
+
+    /**
+     * @ORM\Column(type="string", length=255, nullable=true)
+     * @Groups({"view"})
+     */
+    private ?string $lastName = null;
+
+    /**
+     * @ORM\Column(type="string", length=255, nullable=true)
+     * @Groups({"view"})
+     */
+    private ?string $name = null;
+
+    /**
+     * @ORM\Column(type="string", length=255, nullable=true)
+     * @Groups({"view"})
+     */
+    private ?string $pictureUrl = null;
+
+    /**
+     * @ORM\Column(type="boolean")
+     */
+    private bool $enabled = true;
+
+    /**
+     * @ORM\Column(type="boolean")
+     */
+    private bool $locked = false;
+
+    /**
+     * @ORM\Column(type="string", nullable=true)
+     */
+    private ?string $googleId = null;
 
     public function getId(): ?int
     {
         return $this->id;
+    }
+
+    /**
+     * @param int|null $id
+     * @return User
+     */
+    public function setId(?int $id): User
+    {
+        $this->id = $id;
+        return $this;
     }
 
     public function getEmail(): ?string
@@ -98,12 +147,16 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     /**
      * @see PasswordAuthenticatedUserInterface
      */
-    public function getPassword(): string
+    public function getPassword(): ?string
     {
         return $this->password;
     }
 
-    public function setPassword(string $password): self
+    /**
+     * @param string|null $password
+     * @return $this
+     */
+    public function setPassword(?string $password): self
     {
         $this->password = $password;
 
@@ -128,5 +181,89 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     {
         // If you store any temporary, sensitive data on the user, clear it here
         // $this->plainPassword = null;
+    }
+
+    public function getFirstName(): ?string
+    {
+        return $this->firstName;
+    }
+
+    public function setFirstName(?string $firstName): self
+    {
+        $this->firstName = $firstName;
+
+        return $this;
+    }
+
+    public function getLastName(): ?string
+    {
+        return $this->lastName;
+    }
+
+    public function setLastName(?string $lastName): self
+    {
+        $this->lastName = $lastName;
+
+        return $this;
+    }
+
+    public function getName(): ?string
+    {
+        return $this->name;
+    }
+
+    public function setName(?string $name): self
+    {
+        $this->name = $name;
+
+        return $this;
+    }
+
+    public function getPictureUrl(): ?string
+    {
+        return $this->pictureUrl;
+    }
+
+    public function setPictureUrl(?string $pictureUrl): self
+    {
+        $this->pictureUrl = $pictureUrl;
+
+        return $this;
+    }
+
+    public function isEnabled(): ?bool
+    {
+        return $this->enabled;
+    }
+
+    public function setEnabled(bool $enabled): self
+    {
+        $this->enabled = $enabled;
+
+        return $this;
+    }
+
+    public function isLocker(): ?bool
+    {
+        return $this->locked;
+    }
+
+    public function setLocked(bool $locked): self
+    {
+        $this->locked = $locked;
+
+        return $this;
+    }
+
+    public function getGoogleId(): ?string
+    {
+        return $this->googleId;
+    }
+
+    public function setGoogleId(?string $googleId): self
+    {
+        $this->googleId = $googleId;
+
+        return $this;
     }
 }

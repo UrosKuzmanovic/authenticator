@@ -5,6 +5,8 @@ namespace App\Controller;
 use App\Entity\User;
 use App\Manager\UserManager;
 use App\Security\Authenticator;
+use App\Service\LoginService;
+use App\Util\HttpRequestMessages;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
@@ -28,29 +30,25 @@ use function Symfony\Component\String\u;
  */
 class LoginController extends AbstractController
 {
-
-    private Authenticator $authenticator;
-    private EventDispatcherInterface $eventDispatcher;
+    private LoginService $loginService;
     private TokenStorageInterface $tokenStorage;
     private SessionInterface $session;
     private PasswordHasherFactoryInterface $passwordHasherFactory;
 
     /**
-     * @param Authenticator $authenticator
+     * @param LoginService $loginService
      * @param TokenStorageInterface $tokenStorage
-     * @param EventDispatcherInterface $eventDispatcher
+     * @param PasswordHasherFactoryInterface $passwordHasherFactory
      * @param SessionInterface $session
      */
     public function __construct(
-        Authenticator                  $authenticator,
+        LoginService                   $loginService,
         TokenStorageInterface          $tokenStorage,
         PasswordHasherFactoryInterface $passwordHasherFactory,
-        EventDispatcherInterface       $eventDispatcher,
         SessionInterface               $session
     )
     {
-        $this->authenticator = $authenticator;
-        $this->eventDispatcher = $eventDispatcher;
+        $this->loginService = $loginService;
         $this->tokenStorage = $tokenStorage;
         $this->session = $session;
         $this->passwordHasherFactory = $passwordHasherFactory;
@@ -65,32 +63,20 @@ class LoginController extends AbstractController
         if ($this->isGranted('ROLE_USER')) {
             return $this->json(
                 array(
-                    'status' => 400,
-                    'message' => 'Already logged in!'
+                    'status' => Response::HTTP_BAD_REQUEST,
+                    'message' => HttpRequestMessages::ALREADY_LOGGED_IN
                 ),
                 Response::HTTP_BAD_REQUEST
             );
         }
 
-        // Call the authenticate() method of your custom authenticator
-        $passport = $this->authenticator->authenticate($request);
-
-        // Create the authenticated token
-        $token = $this->authenticator->createToken($passport, 'main');
-
-        // Authenticate the user by setting the token
-        $this->tokenStorage->setToken($token);
-
-        // Fire the login event
-        $event = new InteractiveLoginEvent($request, $token);
-        $this->eventDispatcher->dispatch($event, SecurityEvents::INTERACTIVE_LOGIN);
-
-        $this->session->set('_user', $this->getUser());
+        $this->loginService->login($request);
+        $this->loginService->setUser($this->getUser());
 
         return $this->json(
             array(
-                'status' => 200,
-                'message' => 'Logged in!',
+                'status' => Response::HTTP_OK,
+                'message' => HttpRequestMessages::LOGGED_IN,
                 'user' => $this->getUser(),
             ),
             Response::HTTP_OK,
@@ -108,8 +94,8 @@ class LoginController extends AbstractController
         if (!$this->isGranted('ROLE_USER')) {
             return $this->json(
                 array(
-                    'status' => 400,
-                    'message' => 'Already logged out!'
+                    'status' => Response::HTTP_BAD_REQUEST,
+                    'message' => HttpRequestMessages::ALREADY_LOGGED_IN
                 ),
                 Response::HTTP_BAD_REQUEST
             );
@@ -121,8 +107,8 @@ class LoginController extends AbstractController
 
         return $this->json(
             array(
-                'status' => 200,
-                'message' => 'Logged out!',
+                'status' => Response::HTTP_OK,
+                'message' => HttpRequestMessages::LOGGED_OUT,
             )
         );
     }
@@ -135,8 +121,8 @@ class LoginController extends AbstractController
         if ($this->isGranted('ROLE_USER')) {
             return $this->json(
                 array(
-                    'status' => 400,
-                    'message' => 'Already logged in!'
+                    'status' => Response::HTTP_BAD_REQUEST,
+                    'message' => HttpRequestMessages::ALREADY_LOGGED_IN
                 ),
                 Response::HTTP_BAD_REQUEST
             );
@@ -151,8 +137,8 @@ class LoginController extends AbstractController
         if ($userManager->loadUserByIdentifier($data->email)) {
             return $this->json(
                 array(
-                    'status' => 409,
-                    'message' => 'User with email exists!'
+                    'status' => Response::HTTP_CONFLICT,
+                    'message' => HttpRequestMessages::EMAIL_EXISTS
                 ),
                 Response::HTTP_CONFLICT
             );
@@ -161,27 +147,16 @@ class LoginController extends AbstractController
         $user->setEmail($data->email)
             ->setPassword($hasher->hash($data->password));
 
-        $userDB = $userManager->add($user);
+        $userDB = $userManager->save($user);
 
-        if ($userDB->getId()) {// Call the authenticate() method of your custom authenticator
-            $passport = $this->authenticator->authenticate($request);
-
-            // Create the authenticated token
-            $token = $this->authenticator->createToken($passport, 'main');
-
-            // Authenticate the user by setting the token
-            $this->tokenStorage->setToken($token);
-
-            // Fire the login event
-            $event = new InteractiveLoginEvent($request, $token);
-            $this->eventDispatcher->dispatch($event, SecurityEvents::INTERACTIVE_LOGIN);
-
-            $this->session->set('_user', $this->getUser());
+        if ($userDB->getId()) {
+            $this->loginService->login($request);
+            $this->loginService->setUser($this->getUser());
 
             return $this->json(
                 array(
-                    'status' => 200,
-                    'message' => 'Logged in!',
+                    'status' => Response::HTTP_OK,
+                    'message' => HttpRequestMessages::LOGGED_IN,
                     'user' => $this->getUser(),
                 ),
                 Response::HTTP_OK,
@@ -191,8 +166,8 @@ class LoginController extends AbstractController
         } else {
             return $this->json(
                 array(
-                    'status' => 500,
-                    'message' => 'There was an error while saving user!'
+                    'status' => Response::HTTP_INTERNAL_SERVER_ERROR,
+                    'message' => HttpRequestMessages::SAVING_ERROR
                 ),
                 Response::HTTP_INTERNAL_SERVER_ERROR
             );
@@ -202,27 +177,23 @@ class LoginController extends AbstractController
     /**
      * @Route("/user", name="authenticator_user")
      */
-    public
-    function userAction(Request $request)
+    public function userAction(Request $request)
     {
         if (!$this->isGranted('ROLE_USER')) {
             return $this->json(
                 array(
-                    'status' => 401,
-                    'message' => 'Unauthorized!'
+                    'status' => Response::HTTP_UNAUTHORIZED,
+                    'message' => HttpRequestMessages::UNAUTHORIZED
                 ),
                 Response::HTTP_UNAUTHORIZED
             );
         }
 
-        /** @var User $user */
-        $user = $this->session->get('_user');
-
         return $this->json(
             array(
-                'status' => 200,
-                'message' => 'Logged User',
-                'user' => $user,
+                'status' => Response::HTTP_OK,
+                'message' => HttpRequestMessages::LOGGED_USER,
+                'user' => $this->loginService->getUser(),
             ),
             Response::HTTP_OK,
             [],
