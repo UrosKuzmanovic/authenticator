@@ -36,4 +36,13 @@ class UserManager
     {
         return $this->repository->loadUserByIdentifier($email);
     }
+
+    /**
+     * @param array $criteria
+     * @return User|null
+     */
+    public function findOneBy(array $criteria): ?User
+    {
+        return $this->repository->findOneBy($criteria);
+    }
 }

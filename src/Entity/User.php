@@ -11,6 +11,7 @@ use Symfony\Component\Serializer\Annotation\Groups;
 /**
  * @ORM\Entity(repositoryClass=UserRepository::class)
  * @ORM\Table(name="`user`")
+ * @ORM\HasLifecycleCallbacks
  */
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
@@ -33,6 +34,12 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      * @Groups({"view"})
      */
     private array $roles = [];
+
+    /**
+     * @ORM\Column(type="string", length=255, nullable=true)
+     * @Groups({"view"})
+     */
+    private ?string $username = null;
 
     /**
      * @var string The hashed password
@@ -80,6 +87,21 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      */
     private ?string $googleId = null;
 
+    /**
+     * @ORM\Column(type="datetime", nullable=true)
+     */
+    private ?\DateTime $createdAt = null;
+
+    /**
+     * @ORM\Column(type="datetime", nullable=true)
+     */
+    private ?\DateTime $updatedAt = null;
+
+    /**
+     * @ORM\Column(type="datetime", nullable=true)
+     */
+    private ?\DateTime $loggedAt = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -118,14 +140,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     }
 
     /**
-     * @deprecated since Symfony 5.3, use getUserIdentifier instead
-     */
-    public function getUsername(): string
-    {
-        return (string) $this->email;
-    }
-
-    /**
      * @see UserInterface
      */
     public function getRoles(): array
@@ -141,6 +155,24 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     {
         $this->roles = $roles;
 
+        return $this;
+    }
+
+    /**
+     * @return string|null
+     */
+    public function getUsername(): ?string
+    {
+        return $this->username;
+    }
+
+    /**
+     * @param string|null $username
+     * @return User
+     */
+    public function setUsername(?string $username): User
+    {
+        $this->username = $username;
         return $this;
     }
 
@@ -264,6 +296,60 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     {
         $this->googleId = $googleId;
 
+        return $this;
+    }
+
+    /**
+     * @return \DateTime|null
+     */
+    public function getCreatedAt(): ?\DateTime
+    {
+        return $this->createdAt;
+    }
+
+    /**
+     * @param \DateTime|null $createdAt
+     * @return User
+     */
+    public function setCreatedAt(?\DateTime $createdAt): User
+    {
+        $this->createdAt = $createdAt;
+        return $this;
+    }
+
+    /**
+     * @return \DateTime|null
+     */
+    public function getUpdatedAt(): ?\DateTime
+    {
+        return $this->updatedAt;
+    }
+
+    /**
+     * @param \DateTime|null $updatedAt
+     * @return User
+     */
+    public function setUpdatedAt(?\DateTime $updatedAt): User
+    {
+        $this->updatedAt = $updatedAt;
+        return $this;
+    }
+
+    /**
+     * @return \DateTime|null
+     */
+    public function getLoggedAt(): ?\DateTime
+    {
+        return $this->loggedAt;
+    }
+
+    /**
+     * @param \DateTime|null $loggedAt
+     * @return User
+     */
+    public function setLoggedAt(?\DateTime $loggedAt): User
+    {
+        $this->loggedAt = $loggedAt;
         return $this;
     }
 }

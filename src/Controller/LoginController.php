@@ -8,6 +8,8 @@ use App\Security\Authenticator;
 use App\Service\LoginService;
 use App\Util\HttpRequestMessages;
 use Doctrine\ORM\EntityManagerInterface;
+use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTManager;
+use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -60,24 +62,24 @@ class LoginController extends AbstractController
     public
     function login(Request $request): JsonResponse
     {
-        if ($this->isGranted('ROLE_USER')) {
-            return $this->json(
-                array(
-                    'status' => Response::HTTP_BAD_REQUEST,
-                    'message' => HttpRequestMessages::ALREADY_LOGGED_IN
-                ),
-                Response::HTTP_BAD_REQUEST
-            );
-        }
+//        if ($this->isGranted('ROLE_USER')) {
+//            return $this->json(
+//                array(
+//                    'status' => Response::HTTP_BAD_REQUEST,
+//                    'message' => HttpRequestMessages::ALREADY_LOGGED_IN
+//                ),
+//                Response::HTTP_BAD_REQUEST
+//            );
+//        }
 
-        $this->loginService->login($request);
-        $this->loginService->setUser($this->getUser());
+        $loginDto = $this->loginService->login($request);
 
         return $this->json(
             array(
                 'status' => Response::HTTP_OK,
                 'message' => HttpRequestMessages::LOGGED_IN,
-                'user' => $this->getUser(),
+                'user' => $loginDto->getUser(),
+                'token' => $loginDto->getToken()
             ),
             Response::HTTP_OK,
             [],
@@ -89,13 +91,13 @@ class LoginController extends AbstractController
      * @Route("/logout", name="authenticator_logout")
      */
     public
-    function logout(Request $request)
+    function logout(Request $request): JsonResponse
     {
         if (!$this->isGranted('ROLE_USER')) {
             return $this->json(
                 array(
-                    'status' => Response::HTTP_BAD_REQUEST,
-                    'message' => HttpRequestMessages::ALREADY_LOGGED_IN
+                    'status' => Response::HTTP_UNAUTHORIZED,
+                    'message' => HttpRequestMessages::UNAUTHORIZED
                 ),
                 Response::HTTP_BAD_REQUEST
             );
@@ -116,7 +118,7 @@ class LoginController extends AbstractController
     /**
      * @Route("/register", name="authenticator_register")
      */
-    public function register(Request $request, UserManager $userManager)
+    public function register(Request $request, UserManager $userManager): JsonResponse
     {
         if ($this->isGranted('ROLE_USER')) {
             return $this->json(
@@ -145,19 +147,22 @@ class LoginController extends AbstractController
         }
 
         $user->setEmail($data->email)
-            ->setPassword($hasher->hash($data->password));
+            ->setPassword($hasher->hash($data->password))
+            ->setFirstName($data->firstName)
+            ->setLastName($data->lastName)
+            ->setUsername($data->username);
 
         $userDB = $userManager->save($user);
 
         if ($userDB->getId()) {
-            $this->loginService->login($request);
-            $this->loginService->setUser($this->getUser());
+            $loginDto = $this->loginService->login($request);
 
             return $this->json(
                 array(
                     'status' => Response::HTTP_OK,
                     'message' => HttpRequestMessages::LOGGED_IN,
-                    'user' => $this->getUser(),
+                    'user' => $loginDto->getUser(),
+                    'token' => $loginDto->getToken()
                 ),
                 Response::HTTP_OK,
                 [],
@@ -177,9 +182,11 @@ class LoginController extends AbstractController
     /**
      * @Route("/user", name="authenticator_user")
      */
-    public function userAction(Request $request)
+    public function userAction(Request $request): JsonResponse
     {
-        if (!$this->isGranted('ROLE_USER')) {
+        $token = $request->headers->get('Authorization');
+
+        if (!$token) {
             return $this->json(
                 array(
                     'status' => Response::HTTP_UNAUTHORIZED,
@@ -193,7 +200,7 @@ class LoginController extends AbstractController
             array(
                 'status' => Response::HTTP_OK,
                 'message' => HttpRequestMessages::LOGGED_USER,
-                'user' => $this->loginService->getUser(),
+                'user' => $this->loginService->getUserFromToken($token),
             ),
             Response::HTTP_OK,
             [],

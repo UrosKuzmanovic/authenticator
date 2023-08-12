@@ -2,8 +2,10 @@
 
 namespace App\Service;
 
+use App\Entity\Dto\LoginDto;
 use App\Entity\User;
 use App\Security\Authenticator;
+use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
@@ -15,18 +17,21 @@ use Symfony\Component\Security\Http\SecurityEvents;
 class LoginService
 {
     private Authenticator $authenticator;
+    private JWTTokenManagerInterface $JWTManager;
     private TokenStorageInterface $tokenStorage;
     private EventDispatcherInterface $eventDispatcher;
     private SessionInterface $session;
 
     public function __construct(
         Authenticator            $authenticator,
+        JWTTokenManagerInterface $JWTManager,
         TokenStorageInterface    $tokenStorage,
         EventDispatcherInterface $eventDispatcher,
         SessionInterface         $session
     )
     {
         $this->authenticator = $authenticator;
+        $this->JWTManager = $JWTManager;
         $this->tokenStorage = $tokenStorage;
         $this->eventDispatcher = $eventDispatcher;
         $this->session = $session;
@@ -66,9 +71,9 @@ class LoginService
 
     /**
      * @param Request $request
-     * @return void
+     * @return LoginDto
      */
-    public function login(Request $request): void
+    public function login(Request $request): LoginDto
     {
         $passport = $this->authenticator->authenticate($request);
 
@@ -81,6 +86,26 @@ class LoginService
         // Fire the login event
         $event = new InteractiveLoginEvent($request, $token);
         $this->eventDispatcher->dispatch($event, SecurityEvents::INTERACTIVE_LOGIN);
+        return (new LoginDto())
+            ->setUser($this->getUser())
+            ->setToken($this->JWTManager->create($this->getUser()));
+    }
+
+    /**
+     * @param string $token
+     * @return UserInterface|null
+     */
+    public function getUserFromToken (string $token): ?UserInterface
+    {
+        $token = str_replace('Bearer ', '', $token);
+
+        $user = $this->JWTManager->parse($token);
+
+        if (isset($user['email'])) {
+            return $this->authenticator->loadUserByIdentifier($user['email']);
+        } else {
+            return null;
+        }
     }
 
 }

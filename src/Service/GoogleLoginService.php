@@ -2,6 +2,7 @@
 
 namespace App\Service;
 
+use App\Entity\Dto\LoginDto;
 use App\Entity\User;
 use App\Manager\UserManager;
 use App\Util\GoogleLoginParameters;
@@ -9,7 +10,9 @@ use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\Exception\RequestException;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\PasswordHasherFactoryInterface;
+use Symfony\Component\Security\Core\User\UserInterface;
 
 class GoogleLoginService
 {
@@ -140,32 +143,38 @@ class GoogleLoginService
         $userDB->setPassword($hasher->hash($userData->email));
         $userDB->setFirstName($userData->given_name);
         $userDB->setLastName($userData->family_name);
+        $userDB->setUsername($userData->email);
         $userDB->setName($userData->name);
         $userDB->setPictureUrl($userData->picture);
         $userDB->setGoogleId($userData->id);
+        $userDB->setLoggedAt(new \DateTime());
 
         return $userDB;
     }
 
     /**
      * @param string $response
-     * @return User
+     * @return LoginDto
      */
-    private function saveGoogleUser(string $response): User
+    private function saveGoogleUser(string $response): LoginDto
     {
+        $loginDto = new LoginDto();
+
         $user = $this->getUserData(json_decode($response));
         $userDB = $this->userManager->save($user);
 
         if ($userDB->getId()) {
-            $this->loginService->login(
+            $loginDto = $this->loginService->login(
                 $this->loginService->createAuthenticatorRequest(
                     $userDB->getEmail(),
                     $userDB->getEmail()
                 )
             );
             $this->loginService->setUser($userDB);
+
+            $loginDto->setUser($userDB);
         }
 
-        return $userDB;
+        return $loginDto;
     }
 }
