@@ -108,4 +108,25 @@ class LoginService
         }
     }
 
+    /**
+     * @param int $length
+     * @return string
+     */
+    public function generateConfirmationCode(int $length = 6): string
+    {
+        $characters = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        $charactersLength = strlen($characters);
+        $randomCode = '';
+
+        try {
+            for ($i = 0; $i < $length; $i++) {
+                $randomCode .= $characters[random_int(0, $charactersLength - 1)];
+            }
+
+            return $randomCode;
+        } catch (\Exception $e) {
+            return 'ABCDEF';
+        }
+    }
+
 }

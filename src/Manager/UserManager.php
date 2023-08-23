@@ -45,4 +45,28 @@ class UserManager
     {
         return $this->repository->findOneBy($criteria);
     }
+
+    /**
+     * @param string $email
+     * @param string $code
+     * @return User|null
+     */
+    public function confirmUser(string $email, string $code): ?User
+    {
+        $userDB = $this->repository->findOneBy([
+            'email' => $email,
+            'confirmationCode' => $code,
+            'enabled' => false
+        ]);
+
+        if ($userDB && $userDB->getId()) {
+            $this->repository->save(
+                $userDB
+                    ->setEnabled(true)
+                    ->setConfirmationCode(null)
+            );
+        }
+
+        return $userDB;
+    }
 }

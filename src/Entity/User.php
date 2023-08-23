@@ -102,6 +102,11 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      */
     private ?\DateTime $loggedAt = null;
 
+    /**
+     * @ORM\Column(type="string", nullable=true)
+     */
+    private ?string $confirmationCode = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -350,6 +355,24 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setLoggedAt(?\DateTime $loggedAt): User
     {
         $this->loggedAt = $loggedAt;
+        return $this;
+    }
+
+    /**
+     * @return string|null
+     */
+    public function getConfirmationCode(): ?string
+    {
+        return $this->confirmationCode;
+    }
+
+    /**
+     * @param string|null $confirmationCode
+     * @return User
+     */
+    public function setConfirmationCode(?string $confirmationCode): User
+    {
+        $this->confirmationCode = $confirmationCode;
         return $this;
     }
 }

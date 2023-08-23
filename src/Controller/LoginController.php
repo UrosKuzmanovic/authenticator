@@ -59,19 +59,8 @@ class LoginController extends AbstractController
     /**
      * @Route("/login", name="authenticator_login")
      */
-    public
-    function login(Request $request): JsonResponse
+    public function login(Request $request): JsonResponse
     {
-//        if ($this->isGranted('ROLE_USER')) {
-//            return $this->json(
-//                array(
-//                    'status' => Response::HTTP_BAD_REQUEST,
-//                    'message' => HttpRequestMessages::ALREADY_LOGGED_IN
-//                ),
-//                Response::HTTP_BAD_REQUEST
-//            );
-//        }
-
         $loginDto = $this->loginService->login($request);
 
         return $this->json(
@@ -90,8 +79,7 @@ class LoginController extends AbstractController
     /**
      * @Route("/logout", name="authenticator_logout")
      */
-    public
-    function logout(Request $request): JsonResponse
+    public function logout(Request $request): JsonResponse
     {
         if (!$this->isGranted('ROLE_USER')) {
             return $this->json(
@@ -120,16 +108,6 @@ class LoginController extends AbstractController
      */
     public function register(Request $request, UserManager $userManager): JsonResponse
     {
-        if ($this->isGranted('ROLE_USER')) {
-            return $this->json(
-                array(
-                    'status' => Response::HTTP_BAD_REQUEST,
-                    'message' => HttpRequestMessages::ALREADY_LOGGED_IN
-                ),
-                Response::HTTP_BAD_REQUEST
-            );
-        }
-
         $user = new User();
 
         $hasher = $this->passwordHasherFactory->getPasswordHasher($user);
@@ -150,24 +128,49 @@ class LoginController extends AbstractController
             ->setPassword($hasher->hash($data->password))
             ->setFirstName($data->firstName)
             ->setLastName($data->lastName)
-            ->setUsername($data->username);
+            ->setUsername($data->username)
+            ->setEnabled(!!$data->enabled);
 
         $userDB = $userManager->save($user);
 
         if ($userDB->getId()) {
-            $loginDto = $this->loginService->login($request);
+            if ($data->enabled) {
+                $loginDto = $this->loginService->login(
+                    $this->loginService->createAuthenticatorRequest(
+                        $userDB->getEmail(),
+                        $userDB->getEmail()
+                    )
+                );
 
-            return $this->json(
-                array(
-                    'status' => Response::HTTP_OK,
-                    'message' => HttpRequestMessages::LOGGED_IN,
-                    'user' => $loginDto->getUser(),
-                    'token' => $loginDto->getToken()
-                ),
-                Response::HTTP_OK,
-                [],
-                [AbstractNormalizer::GROUPS => ['view']]
-            );
+                return $this->json(
+                    array(
+                        'status' => Response::HTTP_OK,
+                        'message' => HttpRequestMessages::LOGGED_IN,
+                        'user' => $loginDto->getUser(),
+                        'token' => $loginDto->getToken()
+                    ),
+                    Response::HTTP_OK,
+                    [],
+                    [AbstractNormalizer::GROUPS => ['view']]
+                );
+            } else {
+                $userDB = $userManager->save(
+                    $userDB->setConfirmationCode(
+                        $this->loginService->generateConfirmationCode()
+                    )
+                );
+
+                return $this->json(
+                    array(
+                        'status' => Response::HTTP_OK,
+                        'message' => HttpRequestMessages::REGISTERED,
+                        'user' => $userDB,
+                    ),
+                    Response::HTTP_OK,
+                    [],
+                    [AbstractNormalizer::GROUPS => ['view']]
+                );
+            }
         } else {
             return $this->json(
                 array(
@@ -177,6 +180,50 @@ class LoginController extends AbstractController
                 Response::HTTP_INTERNAL_SERVER_ERROR
             );
         }
+    }
+
+    /**
+     * @Route("/confirm", name="authenticator_confirm")
+     */
+    public function confirm(Request $request, UserManager $userManager): JsonResponse
+    {
+        $data = json_decode($request->getContent());
+
+        if ($data->email && $data->confirmationCode) {
+            $userDB = $userManager->confirmUser($data->email, $data->confirmationCode);
+
+            $loginDto = $this->loginService->login(
+                $this->loginService->createAuthenticatorRequest(
+                    $userDB->getEmail(),
+                    $userDB->getPassword()
+                )
+            );
+
+            if ($userDB) {
+                return $this->json(
+                    array(
+                        'status' => Response::HTTP_OK,
+                        'message' => HttpRequestMessages::ENABLED,
+                        'user' => $loginDto->getUser(),
+                        'token' => $loginDto->getToken(),
+                    )
+                );
+            }
+
+            return $this->json(
+                array(
+                    'status' => Response::HTTP_INTERNAL_SERVER_ERROR,
+                    'message' => HttpRequestMessages::SAVING_ERROR,
+                )
+            );
+        }
+
+        return $this->json(
+            array(
+                'status' => Response::HTTP_INTERNAL_SERVER_ERROR,
+                'message' => HttpRequestMessages::SAVING_ERROR,
+            )
+        );
     }
 
     /**

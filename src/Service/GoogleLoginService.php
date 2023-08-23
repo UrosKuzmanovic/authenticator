@@ -148,6 +148,7 @@ class GoogleLoginService
         $userDB->setPictureUrl($userData->picture);
         $userDB->setGoogleId($userData->id);
         $userDB->setLoggedAt(new \DateTime());
+        $userDB->setEnabled(true);
 
         return $userDB;
     }

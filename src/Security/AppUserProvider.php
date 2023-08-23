@@ -18,9 +18,12 @@ class AppUserProvider implements UserProviderInterface
         $this->userRepository = $userRepository;
     }
 
-    public function loadUserByIdentifier(string $identifier): UserInterface
+    public function loadUserByIdentifier(string $identifier): ?UserInterface
     {
-        return $this->userRepository->findOneBy(['email' => $identifier]);
+        return $this->userRepository->findOneBy([
+            'email' => $identifier,
+            'enabled' => true,
+        ]);
     }
 
     public function loadUserByUsername(string $username): UserInterface

@@ -6,6 +6,8 @@ class HttpRequestMessages
 {
     public const ALREADY_LOGGED_IN = 'Already logged in!';
     public const EMAIL_EXISTS = 'User with email exists!';
+    public const REGISTERED = 'User registered';
+    public const ENABLED = 'User enabled';
     public const LOGGED_IN = 'Logged in!';
     public const LOGGED_OUT = 'Logged out!';
     public const LOGGED_USER = 'Logged User';

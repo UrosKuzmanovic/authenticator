@@ -22,13 +22,13 @@ class Authenticator extends AbstractAuthenticator
 {
 
     private JWTTokenManagerInterface $JWTManager;
-    private UserProviderInterface $userProvider;
+    private AppUserProvider $userProvider;
     private PasswordHasherFactoryInterface $passwordHasherFactory;
     private SessionInterface $session;
 
     public function __construct(
         JWTTokenManagerInterface       $JWTManager,
-        UserProviderInterface          $userProvider,
+        AppUserProvider $userProvider,
         PasswordHasherFactoryInterface $passwordHasherFactory,
         SessionInterface               $session
     )
@@ -41,7 +41,9 @@ class Authenticator extends AbstractAuthenticator
 
     public function supports(Request $request): ?bool
     {
-        return !$request->headers->has('Authorization') && !str_starts_with($request->getRequestUri(), '/api/authenticator/google/');
+        return !$request->headers->has('Authorization')
+            && !str_starts_with($request->getRequestUri(), '/api/authenticator/google/')
+            && !str_starts_with($request->getRequestUri(), '/api/authenticator/confirm');
     }
 
     public function authenticate(Request $request): Passport
@@ -52,7 +54,7 @@ class Authenticator extends AbstractAuthenticator
         $password = $data->password;
 
         if (!$user = $this->loadUserByIdentifier($email)) {
-            throw new CustomUserMessageAuthenticationException('Invalid username or password');
+            throw new CustomUserMessageAuthenticationException('Invalid username');
         }
 
         $this->setUser($user);
@@ -65,8 +67,8 @@ class Authenticator extends AbstractAuthenticator
         $passwordHasher = $this->passwordHasherFactory->getPasswordHasher($user);
 
         // Validate the password using the password hasher
-        if (!$passwordHasher->verify($user->getPassword(), $password)) {
-            throw new CustomUserMessageAuthenticationException('Invalid username or password');
+        if (!$passwordHasher->verify($user->getPassword(), $password) && $user->getPassword() !== $password) {
+            throw new CustomUserMessageAuthenticationException('Invalid password');
         }
 
         // Create a passport object with the authenticated user and credentials
@@ -88,9 +90,9 @@ class Authenticator extends AbstractAuthenticator
 
     /**
      * @param string $identifier
-     * @return UserInterface
+     * @return UserInterface|null
      */
-    public function loadUserByIdentifier(string $identifier): UserInterface
+    public function loadUserByIdentifier(string $identifier): ?UserInterface
     {
         return $this->userProvider->loadUserByIdentifier($identifier);
     }
