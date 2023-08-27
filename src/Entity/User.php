@@ -107,6 +107,11 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      */
     private ?string $confirmationCode = null;
 
+    /**
+     * @ORM\Column(type="string", length=255, nullable=true)
+     */
+    private ?string $phoneNumber;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -373,6 +378,24 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setConfirmationCode(?string $confirmationCode): User
     {
         $this->confirmationCode = $confirmationCode;
+        return $this;
+    }
+
+    /**
+     * @return string|null
+     */
+    public function getPhoneNumber(): ?string
+    {
+        return $this->phoneNumber;
+    }
+
+    /**
+     * @param string|null $phoneNumber
+     * @return User
+     */
+    public function setPhoneNumber(?string $phoneNumber): User
+    {
+        $this->phoneNumber = $phoneNumber;
         return $this;
     }
 }

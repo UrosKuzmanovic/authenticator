@@ -129,6 +129,7 @@ class LoginController extends AbstractController
             ->setFirstName($data->firstName)
             ->setLastName($data->lastName)
             ->setUsername($data->username)
+            ->setPictureUrl($data->pictureUrl)
             ->setEnabled(!!$data->enabled);
 
         $userDB = $userManager->save($user);
